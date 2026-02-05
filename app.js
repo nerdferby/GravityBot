@@ -21,6 +21,7 @@ import {
   getDebugStats,
   getUserDebug,
   getRecentPredictions,
+  resetDatabase,
 } from './betting.js';
 
 // Create an express app
@@ -296,6 +297,35 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
           data: {
             content: message,
+            flags: 64,
+          },
+        });
+      }
+
+      if (subcommand.name === 'reset') {
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: '⚠️ **WARNING: Are you sure you want to reset the entire database?** This will delete all users, predictions, and bets.',
+            components: [
+              {
+                type: MessageComponentTypes.ACTION_ROW,
+                components: [
+                  {
+                    type: MessageComponentTypes.BUTTON,
+                    style: ButtonStyleTypes.DANGER,
+                    label: 'Yes, Reset',
+                    custom_id: 'confirm_reset_yes',
+                  },
+                  {
+                    type: MessageComponentTypes.BUTTON,
+                    style: ButtonStyleTypes.SECONDARY,
+                    label: 'Cancel',
+                    custom_id: 'confirm_reset_no',
+                  },
+                ],
+              },
+            ],
             flags: 64,
           },
         });
@@ -868,6 +898,38 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
               ],
             },
           ],
+        },
+      });
+    }
+
+    // Handle reset confirmation buttons
+    if (custom_id === 'confirm_reset_yes') {
+      const result = await resetDatabase();
+      if (!result.success) {
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: `❌ Reset failed: ${result.error}`,
+            flags: 64,
+          },
+        });
+      }
+
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: '💥 **Database reset complete!** All tables truncated.',
+          flags: 64,
+        },
+      });
+    }
+
+    if (custom_id === 'confirm_reset_no') {
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: '✋ Reset cancelled.',
+          flags: 64,
         },
       });
     }

@@ -178,6 +178,11 @@ const DEBUG_COMMAND = {
         },
       ],
     },
+    {
+      type: 1,
+      name: 'reset',
+      description: 'Reset database (truncate all tables) - DANGEROUS',
+    },
   ],
   type: 1,
   integration_types: [0, 1],

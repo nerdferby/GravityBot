@@ -79,6 +79,22 @@ export async function getRecentPredictions(limit = 10) {
 }
 
 /**
+ * Reset database (truncate all tables)
+ */
+export async function resetDatabase() {
+    return withTransaction(async (client) => {
+        try {
+            await client.query('TRUNCATE TABLE bets CASCADE');
+            await client.query('TRUNCATE TABLE predictions CASCADE');
+            await client.query('TRUNCATE TABLE users CASCADE');
+            return { success: true };
+        } catch (err) {
+            return { success: false, error: err.message };
+        }
+    });
+}
+
+/**
  * Change a user's balance (admin function)
  */
 export async function changeBalance(userId, amount) {
