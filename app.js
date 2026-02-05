@@ -41,6 +41,23 @@ const ALLOWED_CHANNEL_IDS = [
   '1469016835801219278'
 ];
 
+function buildOptionsPlaceholder(options, maxLength = 100) {
+  if (!Array.isArray(options) || options.length === 0) {
+    return 'Enter an option';
+  }
+
+  const text = options.join(', ');
+  if (text.length <= maxLength) {
+    return text;
+  }
+
+  if (maxLength <= 3) {
+    return text.slice(0, maxLength);
+  }
+
+  return `${text.slice(0, maxLength - 3).trimEnd()}...`;
+}
+
 /**
  * Interactions endpoint URL where Discord will send HTTP requests
  * Parse request body and verifies incoming requests using discord-interactions package
@@ -255,7 +272,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
                   custom_id: 'option_input',
                   label: 'Choose an option',
                   style: TextStyleTypes.SHORT,
-                  placeholder: prediction.options.join(', '),
+                  placeholder: buildOptionsPlaceholder(prediction.options),
                   required: true,
                   max_length: 100,
                 },
@@ -396,7 +413,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
                   custom_id: 'outcome_input',
                   label: 'Winning Outcome',
                   style: TextStyleTypes.SHORT,
-                  placeholder: prediction.options.join(', '),
+                  placeholder: buildOptionsPlaceholder(prediction.options),
                   required: true,
                   max_length: 100,
                 },
@@ -651,9 +668,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         });
       }
 
-      const optionsPlaceholder = Array.isArray(prediction.options) && prediction.options.length > 0
-        ? prediction.options.join(', ')
-        : 'Enter an option';
+      const optionsPlaceholder = buildOptionsPlaceholder(prediction.options);
 
       // Show modal for betting
       return res.send({
