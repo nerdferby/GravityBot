@@ -792,7 +792,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       message += `**Total Pot:** ${result.totalPot} credits\n\n`;
 
       if (result.winners.length === 0) {
-        message += '🔄 No winners. All bets returned.';
+        message += '❌ No winners. All bets lost.';
       } else {
         message += '🎉 **Winners:**\n';
         for (const winner of result.winners) {

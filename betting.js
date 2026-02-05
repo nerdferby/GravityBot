@@ -256,16 +256,9 @@ export async function resolvePrediction(predictionId, outcome) {
         );
 
         if (winningBets.length === 0) {
-            for (const bet of bets) {
-                await ensureUser(bet.user_id, client);
-                await client.query(
-                    'UPDATE users SET balance = balance + $1 WHERE user_id = $2',
-                    [bet.amount, bet.user_id]
-                );
-            }
             return {
                 success: true,
-                message: 'No winners. All bets returned.',
+                message: 'No winners. All bets lost.',
                 winners: [],
                 totalPot: totalPot,
             };
