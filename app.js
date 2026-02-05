@@ -13,6 +13,7 @@ import {
   createPrediction,
   placeBet,
   resolvePrediction,
+  voidPrediction,
   getAllBalances,
   getActivePredictions,
   getPrediction,
@@ -605,6 +606,65 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
               ],
             },
           ],
+        },
+      });
+    }
+
+    // /voidprediction command - admin only
+    if (name === 'voidprediction') {
+      // Check if user is admin
+      if (!ADMIN_IDS.includes(userId)) {
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: '❌ You do not have permission to use this command.',
+            flags: 64,
+          },
+        });
+      }
+
+      const predictionId = options.find(opt => opt.name === 'prediction_id').value;
+      const prediction = await getPrediction(predictionId);
+
+      if (!prediction) {
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: `❌ Prediction #${predictionId} not found.`,
+            flags: 64,
+          },
+        });
+      }
+
+      const result = await voidPrediction(predictionId);
+
+      if (!result.success) {
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: `❌ ${result.error}`,
+            flags: 64,
+          },
+        });
+      }
+
+      let message = `✅ **Prediction #${predictionId} Voided!**\n\n`;
+      message += `**Question:** ${prediction.question}\n`;
+      message += `**Total Pot Returned:** ${result.totalPot} credits\n\n`;
+
+      if (result.refunds.length === 0) {
+        message += '💸 No bets to refund.';
+      } else {
+        message += '💸 **Refunds:**\n';
+        for (const refund of result.refunds) {
+          message += `<@${refund.userId}> received **${refund.amount}** credits back\n`;
+        }
+      }
+
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: message,
         },
       });
     }

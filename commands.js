@@ -69,6 +69,23 @@ const RESOLVE_COMMAND = {
   contexts: [0, 2],
 };
 
+const VOID_COMMAND = {
+  name: 'voidprediction',
+  description: '[ADMIN] Void a prediction and return all bets',
+  options: [
+    {
+      type: 4,
+      name: 'prediction_id',
+      description: 'The ID of the prediction to void',
+      required: true,
+      min_value: 1,
+    },
+  ],
+  type: 1,
+  integration_types: [0, 1],
+  contexts: [0, 2],
+};
+
 const MYBETS_COMMAND = {
   name: 'mybets',
   description: 'View your active bets',
@@ -195,6 +212,7 @@ const ALL_COMMANDS = [
   BET_COMMAND,
   PREDICTIONS_COMMAND,
   RESOLVE_COMMAND,
+  VOID_COMMAND,
   MYBETS_COMMAND,
   BALANCES_COMMAND,
   CHANGEBALANCE_COMMAND,

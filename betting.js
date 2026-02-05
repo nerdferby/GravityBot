@@ -306,6 +306,61 @@ export async function resolvePrediction(predictionId, outcome) {
 }
 
 /**
+ * Void a prediction and return all bets
+ */
+export async function voidPrediction(predictionId) {
+    return withTransaction(async (client) => {
+        const predResult = await client.query(
+            'SELECT id, question, resolved FROM predictions WHERE id = $1 FOR UPDATE',
+            [predictionId]
+        );
+
+        if (predResult.rowCount === 0) {
+            return { success: false, error: 'Prediction not found' };
+        }
+
+        const pred = predResult.rows[0];
+        if (pred.resolved) {
+            return { success: false, error: 'This prediction is already resolved' };
+        }
+
+        const betsResult = await client.query(
+            'SELECT user_id, prediction, amount FROM bets WHERE prediction_id = $1',
+            [predictionId]
+        );
+        const bets = betsResult.rows;
+
+        let totalPot = 0;
+        const refunds = [];
+
+        for (const bet of bets) {
+            totalPot += bet.amount;
+            await ensureUser(bet.user_id, client);
+            await client.query(
+                'UPDATE users SET balance = balance + $1 WHERE user_id = $2',
+                [bet.amount, bet.user_id]
+            );
+            refunds.push({
+                userId: bet.user_id,
+                amount: bet.amount,
+            });
+        }
+
+        await client.query(
+            'UPDATE predictions SET resolved = TRUE, outcome = $2 WHERE id = $1',
+            [predictionId, 'VOIDED']
+        );
+
+        return {
+            success: true,
+            message: 'Prediction voided',
+            refunds: refunds,
+            totalPot: totalPot,
+        };
+    });
+}
+
+/**
  * Get all active predictions
  */
 export async function getActivePredictions() {
