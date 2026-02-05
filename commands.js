@@ -79,10 +79,43 @@ const MYBETS_COMMAND = {
 
 const BALANCES_COMMAND = {
   name: 'balances',
-  description: 'View everyone’s balance (excludes default 100)',
+  description: 'View everyone\'s balance (excludes default 1000)',
   type: 1,
   integration_types: [0, 1],
   contexts: [0, 1, 2],
+};
+
+const CHANGEBALANCE_COMMAND = {
+  name: 'changebalance',
+  description: '[ADMIN] Add or remove credits from a user',
+  options: [
+    {
+      type: 6,
+      name: 'user',
+      description: 'The user to modify',
+      required: true,
+    },
+    {
+      type: 3,
+      name: 'action',
+      description: 'Add or remove credits',
+      required: true,
+      choices: [
+        { name: 'Add', value: 'add' },
+        { name: 'Remove', value: 'remove' },
+      ],
+    },
+    {
+      type: 4,
+      name: 'amount',
+      description: 'Amount of credits',
+      required: true,
+      min_value: 1,
+    },
+  ],
+  type: 1,
+  integration_types: [0, 1],
+  contexts: [0, 2],
 };
 
 const ALL_COMMANDS = [
@@ -93,6 +126,7 @@ const ALL_COMMANDS = [
   RESOLVE_COMMAND,
   MYBETS_COMMAND,
   BALANCES_COMMAND,
+  CHANGEBALANCE_COMMAND,
 ];
 
 InstallGlobalCommands(process.env.APP_ID, ALL_COMMANDS);

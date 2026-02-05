@@ -17,6 +17,7 @@ import {
   getActivePredictions,
   getPrediction,
   getUserBets,
+  changeBalance,
 } from './betting.js';
 
 // Create an express app
@@ -406,6 +407,45 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       });
     }
 
+    // /changebalance command - admin only
+    if (name === 'changebalance') {
+      // Check if user is admin
+      if (!ADMIN_IDS.includes(userId)) {
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: '❌ You do not have permission to use this command.',
+            flags: 64,
+          },
+        });
+      }
+
+      const targetUser = options.find(opt => opt.name === 'user').value;
+      const action = options.find(opt => opt.name === 'action').value;
+      const amount = options.find(opt => opt.name === 'amount').value;
+
+      const changeAmount = action === 'add' ? amount : -amount;
+      const result = await changeBalance(targetUser, changeAmount);
+
+      if (!result.success) {
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: `❌ ${result.error}`,
+            flags: 64,
+          },
+        });
+      }
+
+      const actionText = action === 'add' ? 'added to' : 'removed from';
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: `✅ ${amount} credits ${actionText} <@${targetUser}>'s balance.\n**Old balance:** ${result.oldBalance}\n**New balance:** ${result.newBalance}`,
+        },
+      });
+    }
+
     console.error(`unknown command: ${name}`);
     return res.status(400).json({ error: 'unknown command' });
   }
@@ -599,7 +639,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
     // Handle bet button clicks
     if (custom_id.startsWith('bet_')) {
       const predictionId = parseInt(custom_id.split('_')[1]);
-      const prediction = getPrediction(predictionId);
+      const prediction = await getPrediction(predictionId);
 
       if (!prediction) {
         return res.send({
@@ -610,6 +650,10 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           },
         });
       }
+
+      const optionsPlaceholder = Array.isArray(prediction.options) && prediction.options.length > 0
+        ? prediction.options.join(', ')
+        : 'Enter an option';
 
       // Show modal for betting
       return res.send({
@@ -626,7 +670,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
                   custom_id: 'option_input',
                   label: 'Choose an option',
                   style: TextStyleTypes.SHORT,
-                  placeholder: prediction.options.join(', '),
+                  placeholder: optionsPlaceholder,
                   required: true,
                   max_length: 100,
                 },

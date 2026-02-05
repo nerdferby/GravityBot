@@ -1,6 +1,6 @@
 import { query, withTransaction } from './db.js';
 
-const STARTING_BALANCE = 100;
+const STARTING_BALANCE = 1000;
 
 async function ensureUser(userId, client) {
     const q = client || { query };
@@ -31,10 +31,60 @@ export async function getAllBalances() {
 }
 
 /**
+ * Change a user's balance (admin function)
+ */
+export async function changeBalance(userId, amount) {
+    return withTransaction(async (client) => {
+        await ensureUser(userId, client);
+
+        const balanceResult = await client.query(
+            'SELECT balance FROM users WHERE user_id = $1 FOR UPDATE',
+            [userId]
+        );
+        const currentBalance = balanceResult.rows[0].balance;
+        const newBalance = currentBalance + amount;
+
+        if (newBalance < 0) {
+            return { success: false, error: `Cannot set negative balance. User has ${currentBalance} credits.` };
+        }
+
+        await client.query(
+            'UPDATE users SET balance = $1 WHERE user_id = $2',
+            [newBalance, userId]
+        );
+
+        return { success: true, oldBalance: currentBalance, newBalance: newBalance };
+    });
+}
+
+/**
  * Create a new prediction with predefined options
  */
 export async function createPrediction(creatorId, question, options, creatorChoice, creatorAmount) {
     return withTransaction(async (client) => {
+        const normalizedOptions = Array.isArray(options)
+            ? options.map(opt => String(opt).trim()).filter(opt => opt.length > 0)
+            : [];
+
+        const seenOptions = new Set();
+        for (const opt of normalizedOptions) {
+            const key = opt.toLowerCase();
+            if (seenOptions.has(key)) {
+                return { success: false, error: 'Options must be unique (duplicates found).' };
+            }
+            seenOptions.add(key);
+        }
+
+        if (normalizedOptions.length < 2) {
+            return { success: false, error: 'You must provide at least 2 options.' };
+        }
+
+        const normalizedChoice = String(creatorChoice).trim();
+        const validChoice = normalizedOptions.find(opt => opt.toLowerCase() === normalizedChoice.toLowerCase());
+        if (!validChoice) {
+            return { success: false, error: `Your choice must match one of the options: ${normalizedOptions.join(', ')}` };
+        }
+
         await ensureUser(creatorId, client);
 
         const balanceResult = await client.query(
@@ -48,13 +98,13 @@ export async function createPrediction(creatorId, question, options, creatorChoi
 
         const predictionResult = await client.query(
             'INSERT INTO predictions (question, options, creator_id) VALUES ($1, $2, $3) RETURNING id',
-            [question, options, creatorId]
+            [question, normalizedOptions, creatorId]
         );
         const predictionId = predictionResult.rows[0].id;
 
         await client.query(
             'INSERT INTO bets (prediction_id, user_id, prediction, amount) VALUES ($1, $2, $3, $4)',
-            [predictionId, creatorId, creatorChoice, creatorAmount]
+            [predictionId, creatorId, validChoice, creatorAmount]
         );
 
         await client.query(
@@ -173,23 +223,9 @@ export async function resolvePrediction(predictionId, outcome) {
             };
         }
 
-        let totalWinningAmount = 0;
-        for (const bet of winningBets) {
-            totalWinningAmount += bet.amount;
-        }
-
         const winners = [];
         for (const bet of winningBets) {
-            const proportion = bet.amount / totalWinningAmount;
-
-            let potForThisWinner = totalPot;
-            for (const losingBet of losingBets) {
-                if (losingBet.user_id === bet.user_id) {
-                    potForThisWinner -= losingBet.amount;
-                }
-            }
-
-            const winnings = Math.floor(potForThisWinner * proportion);
+            const winnings = bet.amount * 2;
             await ensureUser(bet.user_id, client);
             await client.query(
                 'UPDATE users SET balance = balance + $1 WHERE user_id = $2',
@@ -199,7 +235,7 @@ export async function resolvePrediction(predictionId, outcome) {
                 userId: bet.user_id,
                 winnings: winnings,
                 originalBet: bet.amount,
-                profit: winnings - bet.amount,
+                profit: bet.amount,
             });
         }
 
