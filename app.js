@@ -18,6 +18,9 @@ import {
   getPrediction,
   getUserBets,
   changeBalance,
+  getDebugStats,
+  getUserDebug,
+  getRecentPredictions,
 } from './betting.js';
 
 // Create an express app
@@ -157,6 +160,151 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
           content: message,
+          flags: 64,
+        },
+      });
+    }
+
+    // /debug command - admin only
+    if (name === 'debug') {
+      if (!ADMIN_IDS.includes(userId)) {
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: '❌ You do not have permission to use this command.',
+            flags: 64,
+          },
+        });
+      }
+
+      const subcommand = options?.[0];
+      if (!subcommand) {
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: '❌ Missing debug subcommand.',
+            flags: 64,
+          },
+        });
+      }
+
+      if (subcommand.name === 'stats') {
+        const stats = await getDebugStats();
+        const message =
+          '🧪 **DB Stats:**\n' +
+          `Users: ${stats.users}\n` +
+          `Predictions: ${stats.predictions} (active: ${stats.active_predictions}, resolved: ${stats.resolved_predictions})\n` +
+          `Bets: ${stats.bets} | Total bet amount: ${stats.total_bet_amount}`;
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: message,
+            flags: 64,
+          },
+        });
+      }
+
+      if (subcommand.name === 'prediction') {
+        const predictionId = subcommand.options?.find(opt => opt.name === 'prediction_id')?.value;
+        const prediction = await getPrediction(predictionId);
+        if (!prediction) {
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              content: `❌ Prediction #${predictionId} not found.`,
+              flags: 64,
+            },
+          });
+        }
+
+        const totalPot = prediction.bets.reduce((sum, bet) => sum + bet.amount, 0);
+        const createdAt = prediction.createdAt ? new Date(prediction.createdAt).toISOString() : 'unknown';
+        let message = `🧪 **Prediction #${prediction.id}**\n`;
+        message += `Question: ${prediction.question}\n`;
+        message += `Options: ${prediction.options.join(', ')}\n`;
+        message += `Created: ${createdAt}\n`;
+        message += `Resolved: ${prediction.resolved ? 'yes' : 'no'}\n`;
+        message += `Outcome: ${prediction.outcome || 'n/a'}\n`;
+        message += `Total pot: ${totalPot} credits\n`;
+        message += `Bets (${prediction.bets.length}):\n`;
+
+        if (prediction.bets.length === 0) {
+          message += 'No bets yet.';
+        } else {
+          const maxBets = 10;
+          for (const bet of prediction.bets.slice(0, maxBets)) {
+            message += `• <@${bet.userId}>: ${bet.prediction} (${bet.amount})\n`;
+          }
+          if (prediction.bets.length > maxBets) {
+            message += `…and ${prediction.bets.length - maxBets} more`;
+          }
+        }
+
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: message,
+            flags: 64,
+          },
+        });
+      }
+
+      if (subcommand.name === 'user') {
+        const targetUserId = subcommand.options?.find(opt => opt.name === 'user')?.value;
+        const limit = subcommand.options?.find(opt => opt.name === 'limit')?.value || 10;
+        const userDebug = await getUserDebug(targetUserId, limit);
+
+        let message = `🧪 **User <@${targetUserId}>**\n`;
+        message += `Balance: ${userDebug.balance} credits\n`;
+        message += `Recent bets (max ${limit}):\n`;
+
+        if (userDebug.bets.length === 0) {
+          message += 'No bets found.';
+        } else {
+          for (const bet of userDebug.bets) {
+            const createdAt = bet.created_at ? new Date(bet.created_at).toISOString() : 'unknown';
+            const status = bet.resolved ? `resolved (${bet.outcome || 'n/a'})` : 'active';
+            message += `• #${bet.prediction_id}: ${bet.question} | ${bet.prediction} (${bet.amount}) | ${status} | ${createdAt}\n`;
+          }
+        }
+
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: message,
+            flags: 64,
+          },
+        });
+      }
+
+      if (subcommand.name === 'recent') {
+        const limit = subcommand.options?.find(opt => opt.name === 'limit')?.value || 5;
+        const recent = await getRecentPredictions(limit);
+
+        let message = `🧪 **Recent Predictions (max ${limit})**\n`;
+        if (recent.length === 0) {
+          message += 'No predictions found.';
+        } else {
+          for (const pred of recent) {
+            const createdAt = pred.created_at ? new Date(pred.created_at).toISOString() : 'unknown';
+            const status = pred.resolved ? `resolved (${pred.outcome || 'n/a'})` : 'active';
+            message += `• #${pred.id}: ${pred.question} | ${status} | ${createdAt}\n`;
+          }
+        }
+
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: message,
+            flags: 64,
+          },
+        });
+      }
+
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: '❌ Unknown debug subcommand.',
           flags: 64,
         },
       });
@@ -315,8 +463,10 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
 
       for (const pred of activePredictions.slice(0, 5)) { // Limit to 5 for space
         const totalPot = pred.bets.reduce((sum, bet) => sum + bet.amount, 0);
+        const createdAt = pred.createdAt ? new Date(pred.createdAt).toISOString() : 'unknown';
         message += `**ID ${pred.id}:** ${pred.question}\n`;
         message += `**Options:** ${pred.options.join(', ')}\n`;
+        message += `🕒 Created: ${createdAt}\n`;
         message += `💰 Total pot: ${totalPot} credits | 🎲 ${pred.bets.length} bet(s)\n\n`;
 
         // Add a "Bet on this" button for each prediction

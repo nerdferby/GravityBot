@@ -31,6 +31,54 @@ export async function getAllBalances() {
 }
 
 /**
+ * Debug helpers
+ */
+export async function getDebugStats() {
+    const result = await query(
+        `
+        SELECT
+            (SELECT COUNT(*) FROM users) AS users,
+            (SELECT COUNT(*) FROM predictions) AS predictions,
+            (SELECT COUNT(*) FROM predictions WHERE resolved = FALSE) AS active_predictions,
+            (SELECT COUNT(*) FROM predictions WHERE resolved = TRUE) AS resolved_predictions,
+            (SELECT COUNT(*) FROM bets) AS bets,
+            (SELECT COALESCE(SUM(amount), 0) FROM bets) AS total_bet_amount
+        `
+    );
+    return result.rows[0];
+}
+
+export async function getUserDebug(userId, limit = 10) {
+    await ensureUser(userId);
+    const balance = await getUserBalance(userId);
+    const result = await query(
+        `
+        SELECT b.prediction_id, b.prediction, b.amount, p.question, p.resolved, p.outcome, p.created_at
+        FROM bets b
+        JOIN predictions p ON p.id = b.prediction_id
+        WHERE b.user_id = $1
+        ORDER BY p.created_at DESC
+        LIMIT $2
+        `,
+        [userId, limit]
+    );
+    return { balance, bets: result.rows };
+}
+
+export async function getRecentPredictions(limit = 10) {
+    const result = await query(
+        `
+        SELECT id, question, created_at, resolved, outcome
+        FROM predictions
+        ORDER BY created_at DESC
+        LIMIT $1
+        `,
+        [limit]
+    );
+    return result.rows;
+}
+
+/**
  * Change a user's balance (admin function)
  */
 export async function changeBalance(userId, amount) {

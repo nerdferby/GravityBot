@@ -119,6 +119,71 @@ const CHANGEBALANCE_COMMAND = {
   contexts: [0, 2],
 };
 
+const DEBUG_COMMAND = {
+  name: 'debug',
+  description: '[ADMIN] Debug database info',
+  options: [
+    {
+      type: 1,
+      name: 'stats',
+      description: 'Show overall database stats',
+    },
+    {
+      type: 1,
+      name: 'prediction',
+      description: 'Inspect a prediction and its bets',
+      options: [
+        {
+          type: 4,
+          name: 'prediction_id',
+          description: 'The ID of the prediction',
+          required: true,
+          min_value: 1,
+        },
+      ],
+    },
+    {
+      type: 1,
+      name: 'user',
+      description: 'Inspect a user balance and bets',
+      options: [
+        {
+          type: 6,
+          name: 'user',
+          description: 'The user to inspect',
+          required: true,
+        },
+        {
+          type: 4,
+          name: 'limit',
+          description: 'Max bets to show (default 10)',
+          required: false,
+          min_value: 1,
+          max_value: 20,
+        },
+      ],
+    },
+    {
+      type: 1,
+      name: 'recent',
+      description: 'Show recent predictions',
+      options: [
+        {
+          type: 4,
+          name: 'limit',
+          description: 'Max predictions to show (default 5)',
+          required: false,
+          min_value: 1,
+          max_value: 20,
+        },
+      ],
+    },
+  ],
+  type: 1,
+  integration_types: [0, 1],
+  contexts: [0, 2],
+};
+
 const ALL_COMMANDS = [
   BALANCE_COMMAND,
   PREDICT_COMMAND,
@@ -128,6 +193,7 @@ const ALL_COMMANDS = [
   MYBETS_COMMAND,
   BALANCES_COMMAND,
   CHANGEBALANCE_COMMAND,
+  DEBUG_COMMAND,
 ];
 
 InstallGlobalCommands(process.env.APP_ID, ALL_COMMANDS);
