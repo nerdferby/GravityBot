@@ -109,7 +109,6 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
             type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
             data: {
               content: '❌ Invalid user format. Please tag a user or use "_all".',
-              flags: 64,
             },
           });
         }
@@ -120,7 +119,6 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
           data: {
             content: `💰 <@${targetUserId}> has **${balance}** credits.`,
-            flags: 64,
           },
         });
       }
@@ -131,7 +129,6 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
           content: `💰 You have **${balance}** credits.`,
-          flags: 64,
         },
       });
     }
@@ -144,7 +141,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         return res.send({
           type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
           data: {
-            content: '💰 Everyone has the default balance (100 credits).',
+            content: '💰 Everyone has the default balance (1000 credits).',
             flags: 64,
           },
         });
@@ -159,6 +156,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
           content: message,
+          flags: 64,
         },
       });
     }
