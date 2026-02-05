@@ -62,6 +62,12 @@ function buildOptionsPlaceholder(options, maxLength = 100) {
   return `${text.slice(0, maxLength - 3).trimEnd()}...`;
 }
 
+function formatTimestamp(dateStr, format = 'F') {
+  if (!dateStr) return 'unknown';
+  const unixSeconds = Math.floor(new Date(dateStr).getTime() / 1000);
+  return `<t:${unixSeconds}:${format}>`;
+}
+
 /**
  * Interactions endpoint URL where Discord will send HTTP requests
  * Parse request body and verifies incoming requests using discord-interactions package
@@ -219,7 +225,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         }
 
         const totalPot = prediction.bets.reduce((sum, bet) => sum + bet.amount, 0);
-        const createdAt = prediction.createdAt ? new Date(prediction.createdAt).toISOString() : 'unknown';
+        const createdAt = formatTimestamp(prediction.createdAt);
         let message = `🧪 **Prediction #${prediction.id}**\n`;
         message += `Question: ${prediction.question}\n`;
         message += `Options: ${prediction.options.join(', ')}\n`;
@@ -263,7 +269,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           message += 'No bets found.';
         } else {
           for (const bet of userDebug.bets) {
-            const createdAt = bet.created_at ? new Date(bet.created_at).toISOString() : 'unknown';
+            const createdAt = formatTimestamp(bet.created_at);
             const status = bet.resolved ? `resolved (${bet.outcome || 'n/a'})` : 'active';
             message += `• #${bet.prediction_id}: ${bet.question} | ${bet.prediction} (${bet.amount}) | ${status} | ${createdAt}\n`;
           }
@@ -287,7 +293,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           message += 'No predictions found.';
         } else {
           for (const pred of recent) {
-            const createdAt = pred.created_at ? new Date(pred.created_at).toISOString() : 'unknown';
+            const createdAt = formatTimestamp(pred.created_at);
             const status = pred.resolved ? `resolved (${pred.outcome || 'n/a'})` : 'active';
             message += `• #${pred.id}: ${pred.question} | ${status} | ${createdAt}\n`;
           }
@@ -493,7 +499,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
 
       for (const pred of activePredictions.slice(0, 5)) { // Limit to 5 for space
         const totalPot = pred.bets.reduce((sum, bet) => sum + bet.amount, 0);
-        const createdAt = pred.createdAt ? new Date(pred.createdAt).toISOString() : 'unknown';
+        const createdAt = formatTimestamp(pred.createdAt);
         message += `**ID ${pred.id}:** ${pred.question}\n`;
         message += `**Options:** ${pred.options.join(', ')}\n`;
         message += `🕒 Created: ${createdAt}\n`;
