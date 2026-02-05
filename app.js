@@ -441,7 +441,14 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       const action = options.find(opt => opt.name === 'action').value;
       const amount = options.find(opt => opt.name === 'amount').value;
 
-      const changeAmount = action === 'add' ? amount : -amount;
+      let changeAmount;
+      if (action === 'set') {
+        const currentBalance = await getUserBalance(targetUser);
+        changeAmount = amount - currentBalance;
+      } else {
+        changeAmount = action === 'add' ? amount : -amount;
+      }
+
       const result = await changeBalance(targetUser, changeAmount);
 
       if (!result.success) {
@@ -454,11 +461,17 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         });
       }
 
-      const actionText = action === 'add' ? 'added to' : 'removed from';
+      let actionText;
+      if (action === 'set') {
+        actionText = `set to ${amount} credits for`;
+      } else {
+        actionText = action === 'add' ? 'added to' : 'removed from';
+        actionText = `${amount} credits ${actionText}`;
+      }
       return res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
-          content: `✅ ${amount} credits ${actionText} <@${targetUser}>'s balance.\n**Old balance:** ${result.oldBalance}\n**New balance:** ${result.newBalance}`,
+          content: `✅ ${actionText} <@${targetUser}>'s balance.\n**Old balance:** ${result.oldBalance}\n**New balance:** ${result.newBalance}`,
         },
       });
     }

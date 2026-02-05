@@ -98,11 +98,12 @@ const CHANGEBALANCE_COMMAND = {
     {
       type: 3,
       name: 'action',
-      description: 'Add or remove credits',
+      description: 'Add, remove, or set credits',
       required: true,
       choices: [
         { name: 'Add', value: 'add' },
         { name: 'Remove', value: 'remove' },
+        { name: 'Set', value: 'set' },
       ],
     },
     {
