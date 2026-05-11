@@ -180,6 +180,34 @@ export async function handleVoidPrediction(interaction) {
   return public_(message);
 }
 
+const BEG_BALANCE_LIMIT = 10;
+const DONATE_AMOUNTS = [1, 50, 100];
+
+function buildDonateButtons(targetUserId) {
+  return [{
+    type: MessageComponentTypes.ACTION_ROW,
+    components: DONATE_AMOUNTS.map(amount => ({
+      type: MessageComponentTypes.BUTTON,
+      style: ButtonStyleTypes.PRIMARY,
+      label: `Donate ${amount} Credit${amount === 1 ? '' : 's'}`,
+      custom_id: encode('donate', targetUserId, amount),
+    })),
+  }];
+}
+
+export async function handleBeg(interaction) {
+  const { userId, member, user } = interaction;
+  const balance = await getUserBalance(userId);
+
+  if (balance > BEG_BALANCE_LIMIT) {
+    return ephemeral('You are too rich to beg.');
+  }
+
+  const username = member?.nick ?? member?.user?.username ?? user?.username ?? `<@${userId}>`;
+  console.log(`[Betting] userId=${userId} balance=${balance} action=beg`);
+  return public_(`**${username}** is begging for credits. Click a button to donate or just laugh at them.`, buildDonateButtons(userId));
+}
+
 export async function handleChangeBalance(interaction) {
   const { data, userId } = interaction;
 

@@ -41,7 +41,7 @@ GravityBot runs as two Heroku processes:
         │   ├── commands.js   # BETTING_COMMANDS array (slash command definitions)
         │   ├── handlers.js   # One function per slash command
         │   ├── modals.js     # Modal builders + modal submit handlers
-        │   ├── buttons.js    # Button click handlers (bet button)
+        │   ├── buttons.js    # Button click handlers (bet button, donate button)
         │   └── index.js      # Registers all betting handlers into the registry
         │
         ├── debug/
@@ -331,6 +331,14 @@ Set the forwarding URL + `/interactions` as the **Interactions Endpoint URL** in
 | `/resolve <id>` | Admin | Resolve a prediction (opens a form) |
 | `/voidprediction <id>` | Admin | Void a prediction and refund all bets |
 | `/changebalance <user> <action> <amount>` | Admin | Add, remove, or set a user's credits |
+
+### Begging
+
+| Command | Who | Description |
+|---------|-----|-------------|
+| `/beg` | Anyone with ≤ 10 credits | Post a public plea for donations with three buttons |
+
+Users with more than 10 credits receive a private "You are too rich to beg" reply. Any other user can click a donate button to transfer 1, 50, or 100 credits to the beggar. Donors cannot donate to themselves.
 
 #### Betting rules
 

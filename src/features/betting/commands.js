@@ -91,6 +91,13 @@ export const BETTING_COMMANDS = [
     contexts: [0, 1, 2],
   },
   {
+    name: 'beg',
+    description: 'Beg other users for credits (only available if you have 10 or fewer credits)',
+    type: 1,
+    integration_types: [0, 1],
+    contexts: [0, 2],
+  },
+  {
     name: 'changebalance',
     description: '[ADMIN] Add or remove credits from a user',
     options: [

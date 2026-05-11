@@ -94,6 +94,37 @@ export async function resetDatabase() {
 }
 
 /**
+ * Transfer credits from one user to another
+ */
+export async function donateCredits(donorId, recipientId, amount) {
+    return withTransaction(async (client) => {
+        await ensureUser(donorId, client);
+        await ensureUser(recipientId, client);
+
+        const donorResult = await client.query(
+            'SELECT balance FROM users WHERE user_id = $1 FOR UPDATE',
+            [donorId]
+        );
+        const donorBalance = donorResult.rows[0].balance;
+
+        if (donorBalance < amount) {
+            return { success: false, error: `Insufficient credits. You have ${donorBalance} credits.` };
+        }
+
+        await client.query(
+            'UPDATE users SET balance = balance - $1 WHERE user_id = $2',
+            [amount, donorId]
+        );
+        await client.query(
+            'UPDATE users SET balance = balance + $1 WHERE user_id = $2',
+            [amount, recipientId]
+        );
+
+        return { success: true };
+    });
+}
+
+/**
  * Change a user's balance (admin function)
  */
 export async function changeBalance(userId, amount) {
